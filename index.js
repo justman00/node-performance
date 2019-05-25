@@ -1,27 +1,31 @@
-process.env.UV_THREADPOOL_SIZE = 1;
+// I am a child, going to act like a server and nothing else
+const express = require("express");
+const crypto = require("crypto");
+const Worker = require("webworker-threads").Worker;
+const app = express();
 
-const cluster = require("cluster");
+app.get("/", (req, res) => {
+  const worker = new Worker(function() {
+    this.onmessage = function() {
+      let counter = 0;
+      while (count < 1e9) {
+        counter++;
+      }
 
-// is the file being executed in master mode?
-if (cluster.isMaster) {
-  // cause index.js be executed again but in child mode
-  cluster.fork();
-  cluster.fork();
-} else {
-  // I am a child, going to act like a server and nothing else
-  const express = require("express");
-  const crypto = require("crypto");
-  const app = express();
-
-  app.get("/", (req, res) => {
-    crypto.pbkdf2("a", "b", 100000, 512, "sha512", () => {
-      res.send("Hi there");
-    });
+      postMessage(counter);
+    };
   });
 
-  app.get("/fast", (req, res) => {
-    res.send("this was fast");
-  });
+  worker.onmessage = function({ data }) {
+    console.log(data);
+    res.send(`${data}`);
+  };
 
-  app.listen(5000, () => console.log("listening on port 5000"));
-}
+  worker.postMessage();
+});
+
+app.get("/fast", (req, res) => {
+  res.send("this was fast");
+});
+
+app.listen(5000, () => console.log("listening on port 5000"));
